@@ -1,5 +1,6 @@
-package com.sparta.projcalc.domain.video.dto;
+package com.sparta.projcalc.domain.video.dto.response;
 
+import com.sparta.projcalc.domain.video.entity.VideoCategory;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -12,7 +13,7 @@ public class VideoResponseDto {
     private String title;
     private String description;
     private String url;
-    private String category;
+    private VideoCategory category;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
