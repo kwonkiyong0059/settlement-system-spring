@@ -1,9 +1,10 @@
-package com.sparta.projcalc.domain.user.dto;
+package com.sparta.projcalc.domain.user.dto.response;
 
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
+@Setter
 public class LoginResponseDto {
-    private String token;
     private UserInfo user;
 }
