@@ -1,4 +1,4 @@
-package com.sparta.projcalc.domain.security;
+package com.sparta.projcalc.security;
 
 import com.sparta.projcalc.domain.user.entity.User;
 import com.sparta.projcalc.domain.user.entity.UserRoleEnum;

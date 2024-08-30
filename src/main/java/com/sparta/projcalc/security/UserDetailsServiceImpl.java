@@ -1,6 +1,6 @@
-package com.sparta.projcalc.domain.security;
+package com.sparta.projcalc.security;
 
-import com.sparta.projcalc.common.exception.EncoreHubException;
+import com.sparta.projcalc.common.exception.ProjCalcException;
 import com.sparta.projcalc.common.exception.ErrorCode;
 import com.sparta.projcalc.domain.user.entity.User;
 import com.sparta.projcalc.domain.user.repository.UserRepository;
@@ -19,7 +19,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         // Use the correct User type from your domain package
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new EncoreHubException(ErrorCode.NOT_FOUND_USER));
+                .orElseThrow(() -> new ProjCalcException(ErrorCode.NOT_FOUND_USER));
 
         return new UserDetailsImpl(user);
     }
@@ -27,7 +27,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     public UserDetails loadUserById(Long id) {
         // Use the correct User type from your domain package
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new EncoreHubException(ErrorCode.NOT_FOUND_USER));
+                .orElseThrow(() -> new ProjCalcException(ErrorCode.NOT_FOUND_USER));
 
         return new UserDetailsImpl(user);
     }

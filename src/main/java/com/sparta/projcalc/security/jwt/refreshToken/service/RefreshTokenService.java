@@ -1,10 +1,10 @@
-package com.sparta.projcalc.domain.security.jwt.refreshToken.service;
+package com.sparta.projcalc.security.jwt.refreshToken.service;
 
-import com.sparta.projcalc.common.exception.EncoreHubException;
+import com.sparta.projcalc.common.exception.ProjCalcException;
 import com.sparta.projcalc.common.exception.ErrorCode;
-import com.sparta.projcalc.domain.security.jwt.JwtUtil;
-import com.sparta.projcalc.domain.security.jwt.refreshToken.entity.RefreshToken;
-import com.sparta.projcalc.domain.security.jwt.refreshToken.repository.RefreshTokenRepository;
+import com.sparta.projcalc.security.jwt.JwtUtil;
+import com.sparta.projcalc.security.jwt.refreshToken.entity.RefreshToken;
+import com.sparta.projcalc.security.jwt.refreshToken.repository.RefreshTokenRepository;
 import com.sparta.projcalc.domain.user.entity.User;
 import com.sparta.projcalc.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,14 +29,14 @@ public class RefreshTokenService {
     @Transactional
     public String getAccess(String refreshToken) {
         RefreshToken token = refreshTokenRepository.findById(refreshToken)
-                .orElseThrow(() -> new EncoreHubException(ErrorCode.EXPIRATION_REFRESH_TOKEN));
+                .orElseThrow(() -> new ProjCalcException(ErrorCode.EXPIRATION_REFRESH_TOKEN));
         if (!token.getRefreshToken().equals(refreshToken)) {
             refreshTokenRepository.delete(token);
-            throw new EncoreHubException(ErrorCode.INVALID_REFRESH_TOKEN);
+            throw new ProjCalcException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
 
-        User user = userRepository.findById(token.getMemberId())
-                .orElseThrow(() -> new EncoreHubException(ErrorCode.NOT_FOUND_USER));
+        User user = userRepository.findById(token.getUserId())
+                .orElseThrow(() -> new ProjCalcException(ErrorCode.NOT_FOUND_USER));
         return jwtUtil.createAccessToken(user.getEmail(), user.getRole());
     }
 }

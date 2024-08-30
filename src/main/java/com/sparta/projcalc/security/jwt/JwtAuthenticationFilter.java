@@ -1,14 +1,13 @@
-package com.sparta.projcalc.domain.security.jwt;
+package com.sparta.projcalc.security.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sparta.projcalc.common.exception.EncoreHubException;
 import com.sparta.projcalc.common.exception.ErrorCode;
+import com.sparta.projcalc.common.exception.ProjCalcException;
 import com.sparta.projcalc.common.response.ResponseMessage;
-import com.sparta.projcalc.domain.security.UserDetailsImpl;
 import com.sparta.projcalc.domain.user.dto.request.LoginRequestDto;
 import com.sparta.projcalc.domain.user.entity.UserRoleEnum;
-import com.sparta.projcalc.domain.security.jwt.refreshToken.entity.RefreshToken;
-import com.sparta.projcalc.domain.security.jwt.refreshToken.repository.RefreshTokenRepository;
+import com.sparta.projcalc.security.UserDetailsImpl;
+import com.sparta.projcalc.security.jwt.refreshToken.repository.RefreshTokenRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,14 +23,13 @@ import java.io.PrintWriter;
 
 @Slf4j(topic = "로그인 및 JWT 생성")
 public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
-    // 인증
     private final JwtUtil jwtUtil;
     private final RefreshTokenRepository refreshTokenRepository;
 
     public JwtAuthenticationFilter(JwtUtil jwtUtil, RefreshTokenRepository refreshTokenRepository) {
         this.jwtUtil = jwtUtil;
         this.refreshTokenRepository = refreshTokenRepository;
-        setFilterProcessesUrl("/api/member/login");
+        setFilterProcessesUrl("/api/user/login");
     }
 
     @Override
@@ -48,8 +46,8 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
                     )
             );
         } catch (IOException e) {
-            log.error(e.getMessage());
-            throw new RuntimeException(e.getMessage());
+            log.error("로그인 시도 중 오류 발생: {}", e.getMessage());
+            throw new RuntimeException(e.getMessage(), e);
         }
     }
 
@@ -57,17 +55,18 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authResult) throws IOException, ServletException {
         log.info("로그인 성공 및 JWT 생성");
 
-        String username = ((UserDetailsImpl) authResult.getPrincipal()).getUsername();
-        UserRoleEnum role = ((UserDetailsImpl) authResult.getPrincipal()).getUser().getRole();
-        Long id = ((UserDetailsImpl) authResult.getPrincipal()).getUser().getId();
+        UserDetailsImpl userDetails = (UserDetailsImpl) authResult.getPrincipal();
+        String email = userDetails.getUsername();
+        UserRoleEnum role = userDetails.getUser().getRole();
+        Long id = userDetails.getUser().getId();
 
-        String accessToken = jwtUtil.createAccessToken(username, role);
+        String accessToken = jwtUtil.createAccessToken(email, role);
         String refreshToken = jwtUtil.createRefreshToken(id);
 
-        response.setStatus(HttpServletResponse.SC_OK);
-        response.addHeader(JwtUtil.AUTHORIZATION_ACCESS, accessToken);
-        response.addHeader(JwtUtil.AUTHORIZATION_REFRESH, refreshToken);
+        jwtUtil.addTokenToCookie(response, accessToken, JwtUtil.AUTHORIZATION_ACCESS, JwtUtil.ACCESS_TOKEN_TIME);
+        jwtUtil.addTokenToCookie(response, refreshToken, JwtUtil.AUTHORIZATION_REFRESH, JwtUtil.REFRESH_TOKEN_TIME);
 
+        response.setStatus(HttpServletResponse.SC_OK);
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
         ObjectMapper objectMapper = new ObjectMapper();
@@ -75,12 +74,6 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         PrintWriter out = response.getWriter();
         out.print(jsonString);
         out.flush();
-
-
-        refreshTokenRepository.save(new RefreshToken(refreshToken, id));
-
-
-
     }
 
     @Override
@@ -88,14 +81,12 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         log.info("로그인 실패");
 
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
         ObjectMapper objectMapper = new ObjectMapper();
-        String jsonString = objectMapper.writeValueAsString(new EncoreHubException(ErrorCode.FAILED_LOGIN));
+        String jsonString = objectMapper.writeValueAsString(new ProjCalcException(ErrorCode.FAILED_LOGIN));
         PrintWriter out = response.getWriter();
         out.print(jsonString);
         out.flush();
-
     }
 }

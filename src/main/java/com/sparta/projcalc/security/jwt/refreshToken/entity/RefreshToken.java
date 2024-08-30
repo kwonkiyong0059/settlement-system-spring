@@ -1,4 +1,4 @@
-package com.sparta.projcalc.domain.security.jwt.refreshToken.entity;
+package com.sparta.projcalc.security.jwt.refreshToken.entity;
 
 import org.springframework.data.annotation.Id;
 import lombok.Getter;
@@ -13,5 +13,5 @@ public class RefreshToken {
     @Id
     private final String refreshToken;
 
-    private final Long memberId;
+    private final Long userId;
 }
