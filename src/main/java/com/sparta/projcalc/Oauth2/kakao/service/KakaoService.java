@@ -52,7 +52,7 @@ public class KakaoService {
 
         // 액세스 토큰 및 리프레시 토큰 생성
         String jwtAccessToken = jwtUtil.createAccessToken(user.getEmail(), user.getRole());
-        String jwtRefreshToken = jwtUtil.createRefreshToken(user.getId());
+        String jwtRefreshToken = jwtUtil.createRefreshToken(user);
 
         // 토큰을 맵에 담아서 반환
         Map<String, String> tokens = new HashMap<>();

@@ -2,6 +2,7 @@ package com.sparta.projcalc.security.jwt;
 
 import com.sparta.projcalc.common.exception.ErrorCode;
 import com.sparta.projcalc.common.exception.ProjCalcException;
+import com.sparta.projcalc.domain.user.entity.User;
 import com.sparta.projcalc.security.UserDetailsImpl;
 import com.sparta.projcalc.security.UserDetailsServiceImpl;
 import com.sparta.projcalc.security.jwt.refreshToken.entity.RefreshToken;
@@ -37,38 +38,38 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain filterChain) throws ServletException, IOException {
-        String accessToken = jwtUtil.getAccessTokenFromCookies(req);
-        String refreshToken = jwtUtil.getRefreshTokenFromCookies(req);
+        String accessToken = jwtUtil.getAccessTokenFromCookie(req);
+        String refreshToken = jwtUtil.getRefreshTokenFromCookie(req);
 
         if (StringUtils.hasText(accessToken) && jwtUtil.validateAccessToken(accessToken, req)) {
-            log.info("Access Token is valid");
+            log.info("액세스 토큰이 유효합니다.");
             Claims claims = jwtUtil.getUserInfoFromToken(accessToken);
             setAuthentication(claims.getSubject());
         } else if (StringUtils.hasText(refreshToken) && jwtUtil.validateAccessToken(refreshToken, req)) {
-            log.info("Refresh Token is valid");
+            log.info("리프레시 토큰이 유효합니다.");
             handleRefreshToken(req, res, refreshToken);
         } else {
-            log.error("Invalid tokens");
+            log.error("유효하지 않은 토큰입니다.");
         }
 
         filterChain.doFilter(req, res);
     }
 
     private void handleRefreshToken(HttpServletRequest req, HttpServletResponse res, String refreshToken) {
-        RefreshToken storedRefreshToken = refreshTokenRepository.findById(refreshToken)
+        RefreshToken storedRefreshToken = refreshTokenRepository.findByRefreshToken(refreshToken)
                 .orElseThrow(() -> new ProjCalcException(ErrorCode.NOT_FOUND_REFRESH_TOKEN));
 
-        Long storedUserId = storedRefreshToken.getUserId();
+        User user = storedRefreshToken.getUser();
         Claims claims = jwtUtil.getUserInfoFromToken(refreshToken);
         Long tokenUserId = claims.get("id", Long.class);
 
-        if (tokenUserId.equals(storedUserId)) {
+        if (tokenUserId.equals(user)) {
             UserDetailsImpl userDetails = (UserDetailsImpl) userDetailsService.loadUserById(tokenUserId);
             String newAccessToken = jwtUtil.createAccessToken(userDetails.getUsername(), userDetails.getUser().getRole());
             res.addHeader(JwtUtil.AUTHORIZATION_ACCESS, newAccessToken);
             setAuthentication(userDetails.getUsername());
         } else {
-            log.error("Invalid Refresh Token user ID");
+            log.error("유효하지 않은 리프레시 토큰 사용자 ID입니다.");
         }
     }
 

@@ -1,17 +1,32 @@
 package com.sparta.projcalc.security.jwt.refreshToken.entity;
 
-import org.springframework.data.annotation.Id;
+import com.sparta.projcalc.domain.user.entity.User;
+import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.RedisHash;
+import lombok.NoArgsConstructor;
 
 @Getter
-@RequiredArgsConstructor
-@RedisHash(value = "refreshToken", timeToLive = 86400)
+@Entity
+@NoArgsConstructor
 public class RefreshToken {
 
     @Id
-    private final String refreshToken;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    private final Long userId;
+    private String refreshToken;
+
+    @OneToOne
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    public RefreshToken(String refreshToken, User user) {
+        this.refreshToken = refreshToken;
+        this.user = user;
+    }
+
+    public Long getUserId() {
+        return this.user.getId(); // User 객체에서 ID를 추출하는 방법
+    }
+
 }

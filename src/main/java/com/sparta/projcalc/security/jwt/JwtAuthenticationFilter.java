@@ -5,6 +5,7 @@ import com.sparta.projcalc.common.exception.ErrorCode;
 import com.sparta.projcalc.common.exception.ProjCalcException;
 import com.sparta.projcalc.common.response.ResponseMessage;
 import com.sparta.projcalc.domain.user.dto.request.LoginRequestDto;
+import com.sparta.projcalc.domain.user.entity.User;
 import com.sparta.projcalc.domain.user.entity.UserRoleEnum;
 import com.sparta.projcalc.security.UserDetailsImpl;
 import com.sparta.projcalc.security.jwt.refreshToken.repository.RefreshTokenRepository;
@@ -29,7 +30,7 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
     public JwtAuthenticationFilter(JwtUtil jwtUtil, RefreshTokenRepository refreshTokenRepository) {
         this.jwtUtil = jwtUtil;
         this.refreshTokenRepository = refreshTokenRepository;
-        setFilterProcessesUrl("/api/user/login");
+        setFilterProcessesUrl("/api/users/login");
     }
 
     @Override
@@ -58,10 +59,10 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         UserDetailsImpl userDetails = (UserDetailsImpl) authResult.getPrincipal();
         String email = userDetails.getUsername();
         UserRoleEnum role = userDetails.getUser().getRole();
-        Long id = userDetails.getUser().getId();
+        User user = userDetails.getUser();
 
         String accessToken = jwtUtil.createAccessToken(email, role);
-        String refreshToken = jwtUtil.createRefreshToken(id);
+        String refreshToken = jwtUtil.createRefreshToken(user);
 
         jwtUtil.addTokenToCookie(response, accessToken, JwtUtil.AUTHORIZATION_ACCESS, JwtUtil.ACCESS_TOKEN_TIME);
         jwtUtil.addTokenToCookie(response, refreshToken, JwtUtil.AUTHORIZATION_REFRESH, JwtUtil.REFRESH_TOKEN_TIME);
@@ -75,6 +76,7 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         out.print(jsonString);
         out.flush();
     }
+
 
     @Override
     protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed) throws IOException, ServletException {

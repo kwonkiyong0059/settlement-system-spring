@@ -1,6 +1,7 @@
 package com.sparta.projcalc.security.jwt;
 
 import com.sparta.projcalc.common.exception.ErrorCode;
+import com.sparta.projcalc.domain.user.entity.User;
 import com.sparta.projcalc.domain.user.entity.UserRoleEnum;
 import com.sparta.projcalc.security.jwt.refreshToken.entity.RefreshToken;
 import com.sparta.projcalc.security.jwt.refreshToken.repository.RefreshTokenRepository;
@@ -15,32 +16,40 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
+import java.net.URLEncoder;
 import java.security.Key;
 import java.util.Base64;
 import java.util.Date;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 @Component
 public class JwtUtil {
 
+    // JWT 관련 상수 정의
     public static final String AUTHORIZATION_ACCESS = "AccessToken";
     public static final String AUTHORIZATION_REFRESH = "RefreshToken";
-    public static final long ACCESS_TOKEN_TIME = 2 * 60 * 60; // 2시간 (초 단위)
-    public static final long REFRESH_TOKEN_TIME = 24 * 60 * 60; // 24시간 (초 단위)
+    public static final String AUTHORIZATION_KEY = "auth";
+    public static final String BEARER_PREFIX = "Bearer ";
+    public static final long ACCESS_TOKEN_TIME = 2 * 60 * 60 * 1000L; // 2시간
+    public static final long REFRESH_TOKEN_TIME = 24 * 60 * 60 * 1000L; // 24시간
 
     @Value("${jwt.secret.key}")
     private String secretKey;
+
     private Key key;
+
+    // 암호화 알고리즘 HS256으로 사용할 것임
     private final SignatureAlgorithm signatureAlgorithm = SignatureAlgorithm.HS256;
 
-    public static final Logger logger = LoggerFactory.getLogger(JwtUtil.class);
+    private static final Logger logger = LoggerFactory.getLogger("JWT 관련 로그");
 
     private final RefreshTokenRepository refreshTokenRepository;
 
     /**
-     * JWT 유틸리티 초기화 메서드.
-     * @PostConstruct 애너테이션을 사용하여 빈이 초기화될 때 호출됩니다.
+     * Keys.hmacShaKeyFor() : key byte array를 HMAC 알고리즘을 적용한 Key 객체를 생성함.
      */
     @PostConstruct
     public void init() {
@@ -49,99 +58,138 @@ public class JwtUtil {
     }
 
     /**
-     * Access Token을 생성하는 메서드.
-     * @param email 유저의 이메일
-     * @param role 유저의 역할
-     * @return 생성된 Access Token 문자열
+     * Access Token 생성
+     *
+     * @param email 사용자 이메일
+     * @param role 사용자 권한
+     * @return 생성된 Access Token
      */
     public String createAccessToken(String email, UserRoleEnum role) {
+
         Date now = new Date();
-        return Jwts.builder()
-                .setSubject(email)
-                .claim("role", role)
-                .setIssuedAt(now)
-                .setExpiration(new Date(now.getTime() + ACCESS_TOKEN_TIME * 1000)) // ms로 변환
-                .signWith(key, signatureAlgorithm)
-                .compact();
+
+        return BEARER_PREFIX +
+                Jwts.builder()
+                        .setSubject(email)
+                        .claim("role", role)
+                        .setIssuedAt(now)
+                        .setExpiration(new Date(now.getTime() + ACCESS_TOKEN_TIME))
+                        .signWith(key, signatureAlgorithm)
+                        .compact();
     }
 
     /**
-     * Refresh Token을 생성하는 메서드.
-     * @param userId 유저 ID
-     * @return 생성된 Refresh Token 문자열
+     * Refresh Token 생성
+     *
+     * @param user 사용자 ID
+     * @return 생성된 Refresh Token
      */
-    public String createRefreshToken(Long userId) {
+    public String createRefreshToken(User user) {
+
+        // 1. 데이터베이스에서 해당 유저의 리프레시 토큰이 존재하는지 확인
+        Optional<RefreshToken> existingToken = refreshTokenRepository.findByUser(user);
+
+        // 2. 리프레시 토큰이 이미 존재하면 그 값을 반환
+        if (existingToken.isPresent()) {
+            return existingToken.get().getRefreshToken();
+        }
+        // 3. 리프레시 토큰이 존재하지 않으면 새로 생성
         Date now = new Date();
         String token = Jwts.builder()
-                .claim("id", userId)
+                .claim("id", user.getId())
                 .setIssuedAt(now)
-                .setExpiration(new Date(now.getTime() + REFRESH_TOKEN_TIME * 1000)) // ms로 변환
+                .setExpiration(new Date(now.getTime() + REFRESH_TOKEN_TIME))
                 .signWith(key, signatureAlgorithm)
                 .compact();
 
-        RefreshToken refreshToken = new RefreshToken(token, userId);
+        RefreshToken refreshToken = new RefreshToken(token, user);
         refreshTokenRepository.save(refreshToken);
+
         return token;
     }
 
     /**
-     * 쿠키에 토큰을 추가하는 메서드.
+     * 쿠키에 토큰 추가
+     *
      * @param response HttpServletResponse 객체
      * @param token 토큰 문자열 (AccessToken 또는 RefreshToken)
      * @param tokenName 토큰 이름 (AUTHORIZATION_ACCESS 또는 AUTHORIZATION_REFRESH)
-     * @param maxAge 쿠키의 만료 시간 (초 단위)
+     * @param maxAge 쿠키 만료 시간 (초 단위)
      */
     public void addTokenToCookie(HttpServletResponse response, String token, String tokenName, long maxAge) {
-        Cookie cookie = new Cookie(tokenName, token);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath("/");
-        cookie.setMaxAge((int) maxAge);
-        response.addCookie(cookie);
+        try {
+
+             token = URLEncoder.encode(token, "utf-8").replaceAll("\\+", "%20");
+
+            Cookie cookie = new Cookie(tokenName, token);
+            cookie.setHttpOnly(true);
+            cookie.setSecure(true);
+            cookie.setPath("/");
+            cookie.setMaxAge((int) maxAge);
+            response.addCookie(cookie);
+
+            logger.info("쿠키 추가: 이름 = {}, 값 = {}", tokenName, token);
+        } catch (Exception e) {
+            logger.error("쿠키에 토큰 추가 실패: {}", e.getMessage());
+        }
     }
 
     /**
-     * 쿠키에서 토큰을 추출하는 메서드.
-     * @param request HttpServletRequest 객체
-     * @param tokenName 토큰 이름 (AUTHORIZATION_ACCESS 또는 AUTHORIZATION_REFRESH)
-     * @return 토큰 문자열, 찾을 수 없는 경우 null
+     * 액세스 토큰을 쿠키에서 추출합니다.
+     *
+     * @param request HTTP 요청 객체
+     * @return 액세스 토큰 문자열, 또는 쿠키에 액세스 토큰이 없거나 유효하지 않으면 {@code null}
      */
-    public String getTokenFromCookies(HttpServletRequest request, String tokenName) {
+    public String getAccessTokenFromCookie(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
             for (Cookie cookie : cookies) {
-                if (tokenName.equals(cookie.getName())) {
-                    return cookie.getValue();
+                if (AUTHORIZATION_ACCESS.equals(cookie.getName())) {
+                    String accessToken = cookie.getValue();
+                    logger.info("액세스 토큰 쿠키 값: {}", accessToken);
+                    if (StringUtils.hasText(accessToken) && accessToken.startsWith(BEARER_PREFIX)) {
+                        return accessToken.substring(7);
+                    }
+                    logger.error("쿠키의 액세스 토큰이 유효하지 않습니다.");
+                    return null;
                 }
             }
         }
-        logger.error("쿠키에서 토큰을 찾을 수 없습니다: {}", tokenName);
+        logger.error("액세스 토큰 쿠키를 찾을 수 없습니다.");
         return null;
     }
 
     /**
-     * 쿠키에서 Access Token을 추출하는 메서드.
-     * @param request HttpServletRequest 객체
-     * @return Access Token 문자열, 찾을 수 없는 경우 null
+     * 리프레시 토큰을 쿠키에서 추출합니다.
+     *
+     * @param request HTTP 요청 객체
+     * @return 리프레시 토큰 문자열, 또는 쿠키에 리프레시 토큰이 없거나 유효하지 않으면 {@code null}
      */
-    public String getAccessTokenFromCookies(HttpServletRequest request) {
-        return getTokenFromCookies(request, AUTHORIZATION_ACCESS);
+    public String getRefreshTokenFromCookie(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if (AUTHORIZATION_REFRESH.equals(cookie.getName())) {
+                    String refreshToken = cookie.getValue();
+                    logger.info("리프레시 토큰 쿠키 값: {}", refreshToken);
+                    if (StringUtils.hasText(refreshToken)) {
+                        return refreshToken;
+                    }
+                    logger.error("쿠키의 리프레시 토큰이 유효하지 않습니다.");
+                    return null;
+                }
+            }
+        }
+        logger.error("리프레시 토큰 쿠키를 찾을 수 없습니다.");
+        return null;
     }
 
     /**
-     * 쿠키에서 Refresh Token을 추출하는 메서드.
-     * @param request HttpServletRequest 객체
-     * @return Refresh Token 문자열, 찾을 수 없는 경우 null
-     */
-    public String getRefreshTokenFromCookies(HttpServletRequest request) {
-        return getTokenFromCookies(request, AUTHORIZATION_REFRESH);
-    }
-
-    /**
-     * Access Token의 유효성을 검증하는 메서드.
+     * Access Token 유효성 검증
+     *
      * @param token 검증할 Access Token 문자열
      * @param request HttpServletRequest 객체
-     * @return 유효한 경우 true, 그렇지 않은 경우 false
+     * @return 유효하면 true, 그렇지 않으면 false
      */
     public boolean validateAccessToken(String token, HttpServletRequest request) {
         try {

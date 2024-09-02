@@ -16,7 +16,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
@@ -64,16 +63,16 @@ public class WebSecurityConfig {
 
         http.authorizeHttpRequests(authorizeHttpRequests ->
                 authorizeHttpRequests
-                        .requestMatchers("/", "/login", "/oauth2/**").permitAll()
+                        .requestMatchers("/oauth2/**").permitAll()
                         .requestMatchers("/api/users/**").permitAll()
-                        .requestMatchers("/oauth/token").permitAll()
-                        .requestMatchers("/auth/kakao/callback/**", "/login/kakao/**", "/oauth2/authorization/kakao/**").permitAll()
-                        .requestMatchers("/resources/**", "/static/**", "/public/**", "/webjars/**").permitAll() // 정적 자원 접근 허용
+                        .requestMatchers("/auth/kakao/callback", "/login/kakao/**", "/oauth2/authorization/kakao/**").permitAll()
+                        .requestMatchers("/resources/**", "/static/**", "/public/**").permitAll() // 정적 자원 접근 허용
                         .anyRequest().authenticated()
         );
 
-        http.addFilterBefore(jwtAuthorizationFilter(), JwtAuthenticationFilter.class);
         http.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(jwtAuthorizationFilter(), JwtAuthenticationFilter.class);
+
 
         http.exceptionHandling(exceptionConfig ->
                 exceptionConfig.authenticationEntryPoint(customAuthenticationEntryPoint)
@@ -81,9 +80,5 @@ public class WebSecurityConfig {
         );
 
         return http.build();
-    }
-    @Bean
-    public SimpleUrlAuthenticationSuccessHandler oauth2AuthenticationSuccessHandler() {
-        return new SimpleUrlAuthenticationSuccessHandler("/home"); // 로그인 성공 후 리다이렉트할 URL 설정
     }
 }

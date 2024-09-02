@@ -28,7 +28,7 @@ public class RefreshTokenService {
      */
     @Transactional
     public String getAccess(String refreshToken) {
-        RefreshToken token = refreshTokenRepository.findById(refreshToken)
+        RefreshToken token = refreshTokenRepository.findByRefreshToken(refreshToken)
                 .orElseThrow(() -> new ProjCalcException(ErrorCode.EXPIRATION_REFRESH_TOKEN));
         if (!token.getRefreshToken().equals(refreshToken)) {
             refreshTokenRepository.delete(token);
