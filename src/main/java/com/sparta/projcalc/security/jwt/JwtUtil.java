@@ -18,13 +18,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.security.Key;
 import java.util.Base64;
 import java.util.Date;
 import java.util.Optional;
-
 
 @RequiredArgsConstructor
 @Component
@@ -33,9 +31,10 @@ public class JwtUtil {
     // JWT 관련 상수 정의
     public static final String AUTHORIZATION_ACCESS = "AccessToken";
     public static final String AUTHORIZATION_REFRESH = "RefreshToken";
+    public static final String AUTHORIZATION_KEY = "auth";
     public static final String BEARER_PREFIX = "Bearer ";
-    public static final long ACCESS_TOKEN_TIME = 9 * 60 * 1000L; // 15분
-    public static final long REFRESH_TOKEN_TIME = 24 * 60 * 60 * 7 *1000L; // 7일
+    public static final long ACCESS_TOKEN_TIME = 2 * 60 * 60 * 1000L; // 2시간
+    public static final long REFRESH_TOKEN_TIME = 24 * 60 * 60 * 1000L; // 24시간
 
     @Value("${jwt.secret.key}")
     private String secretKey;
@@ -96,15 +95,14 @@ public class JwtUtil {
         }
         // 3. 리프레시 토큰이 존재하지 않으면 새로 생성
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + REFRESH_TOKEN_TIME);
         String token = Jwts.builder()
                 .claim("id", user.getId())
                 .setIssuedAt(now)
-                .setExpiration(expiryDate)
+                .setExpiration(new Date(now.getTime() + REFRESH_TOKEN_TIME))
                 .signWith(key, signatureAlgorithm)
                 .compact();
 
-        RefreshToken refreshToken = new RefreshToken(token, user, expiryDate);
+        RefreshToken refreshToken = new RefreshToken(token, user);
         refreshTokenRepository.save(refreshToken);
 
         return token;
@@ -148,16 +146,9 @@ public class JwtUtil {
             for (Cookie cookie : cookies) {
                 if (AUTHORIZATION_ACCESS.equals(cookie.getName())) {
                     String accessToken = cookie.getValue();
-                    try {
-                        // URL 디코딩 수행
-                        accessToken = URLDecoder.decode(accessToken, "UTF-8");
-                        logger.info("디코딩된 액세스 토큰 쿠키 값: {}", accessToken);
-                    } catch (Exception e) {
-                        logger.error("액세스 토큰 디코딩 실패: {}", e.getMessage());
-                    }
-
+                    logger.info("액세스 토큰 쿠키 값: {}", accessToken);
                     if (StringUtils.hasText(accessToken) && accessToken.startsWith(BEARER_PREFIX)) {
-                        return accessToken.substring(BEARER_PREFIX.length());
+                        return accessToken.substring(7);
                     }
                     logger.error("쿠키의 액세스 토큰이 유효하지 않습니다.");
                     return null;
@@ -220,18 +211,6 @@ public class JwtUtil {
         return false;
     }
 
-    public boolean validateRefreshToken(String token, HttpServletRequest request) {
-        try {
-            Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
-            return true;
-        } catch (Exception e) {
-            logger.error("유효하지 않은 리프레시 토큰: {}", e.getMessage());
-            request.setAttribute("exception", ErrorCode.INVALID_REFRESH_TOKEN.getCode());
-            return false;
-        }
-    }
-
-
     /**
      * JWT에서 사용자 정보를 추출하는 메서드.
      * @param token JWT 토큰 문자열
@@ -249,9 +228,5 @@ public class JwtUtil {
     public String getEmailFromToken(String token) {
         Claims claims = getUserInfoFromToken(token);
         return claims.getSubject();
-    }
-
-    public Key getKey() {
-        return key;
     }
 }
