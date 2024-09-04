@@ -8,10 +8,12 @@ import com.sparta.projcalc.security.UserDetailsServiceImpl;
 import com.sparta.projcalc.security.jwt.refreshToken.entity.RefreshToken;
 import com.sparta.projcalc.security.jwt.refreshToken.repository.RefreshTokenRepository;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -23,6 +25,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+@RequiredArgsConstructor
 @Slf4j(topic = "JWT 검증 및 인가")
 public class JwtAuthorizationFilter extends OncePerRequestFilter {
 
@@ -30,11 +33,6 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
     private final UserDetailsServiceImpl userDetailsService;
     private final RefreshTokenRepository refreshTokenRepository;
 
-    public JwtAuthorizationFilter(JwtUtil jwtUtil, UserDetailsServiceImpl userDetailsService, RefreshTokenRepository refreshTokenRepository) {
-        this.jwtUtil = jwtUtil;
-        this.userDetailsService = userDetailsService;
-        this.refreshTokenRepository = refreshTokenRepository;
-    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain filterChain) throws ServletException, IOException {
@@ -45,7 +43,7 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
             log.info("액세스 토큰이 유효합니다.");
             Claims claims = jwtUtil.getUserInfoFromToken(accessToken);
             setAuthentication(claims.getSubject());
-        } else if (StringUtils.hasText(refreshToken) && jwtUtil.validateAccessToken(refreshToken, req)) {
+        } else if (StringUtils.hasText(refreshToken) && validateRefreshToken(refreshToken, req)) {
             log.info("리프레시 토큰이 유효합니다.");
             handleRefreshToken(req, res, refreshToken);
         } else {
@@ -53,6 +51,17 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(req, res);
+    }
+
+    private boolean validateRefreshToken(String token, HttpServletRequest request) {
+        try {
+            Jwts.parserBuilder().setSigningKey(jwtUtil.getKey()).build().parseClaimsJws(token);
+            return true;
+        } catch (Exception e) {
+            log.error("유효하지 않은 리프레시 토큰: {}", e.getMessage(), e);
+            request.setAttribute("exception", ErrorCode.INVALID_REFRESH_TOKEN.getCode());
+            return false;
+        }
     }
 
     private void handleRefreshToken(HttpServletRequest req, HttpServletResponse res, String refreshToken) {
@@ -63,7 +72,7 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
         Claims claims = jwtUtil.getUserInfoFromToken(refreshToken);
         Long tokenUserId = claims.get("id", Long.class);
 
-        if (tokenUserId.equals(user)) {
+        if (tokenUserId.equals(user.getId())) {
             UserDetailsImpl userDetails = (UserDetailsImpl) userDetailsService.loadUserById(tokenUserId);
             String newAccessToken = jwtUtil.createAccessToken(userDetails.getUsername(), userDetails.getUser().getRole());
             res.addHeader(JwtUtil.AUTHORIZATION_ACCESS, newAccessToken);
