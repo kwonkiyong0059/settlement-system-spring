@@ -1,6 +1,6 @@
 package com.sparta.projcalc.domain.ad.entity;
 
-import com.sparta.projcalc.domain.video.entity.Video;
+import com.sparta.projcalc.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
@@ -27,7 +27,7 @@ public class Advertisement {
     private String imageUrl;
 
     @Column(nullable = false)
-    private Long viewCount; // 조회수 필드 추가
+    private Long viewCount = 0L;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
@@ -35,9 +35,12 @@ public class Advertisement {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(nullable = false)
+    private Integer duration;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "video_id")
-    private Video video;
+    @JoinColumn(name = "user_id")
+    private User user;
 
     @PrePersist
     public void prePersist() {
@@ -52,28 +55,23 @@ public class Advertisement {
     }
 
     @Builder
-    public Advertisement(String title, String content, String imageUrl, Long viewCount, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public Advertisement(String title, String content, String imageUrl, User user, Integer duration, Long viewCount) {
         this.title = title;
         this.content = content;
         this.imageUrl = imageUrl;
+        this.user = user;
+        this.duration = duration;
         this.viewCount = viewCount;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
     }
 
-    // 조회수 증가 메서드 추가
     public void incrementViewCount() {
         this.viewCount++;
     }
 
-    // 비즈니스 로직을 위한 업데이트 메서드
-    public void updateDetails(String title, String content, String imageUrl) {
+    public void updateDetails(String title, String content, String imageUrl, Integer duration) {
         this.title = title;
         this.content = content;
         this.imageUrl = imageUrl;
-    }
-    public Advertisement(Video video, Long viewCount) {
-        this.video = video;
-        this.viewCount = viewCount;
+        this.duration = duration;
     }
 }

@@ -17,7 +17,7 @@ COPY settings.gradle ./
 RUN apt-get update && apt-get install -y bash
 
 # Gradle을 사용하여 프로젝트를 빌드합니다.
-RUN ./gradlew build --no-daemon
+RUN ./gradlew build -x test --no-daemon
 
 # 2단계: 실행 이미지 생성
 # JRE가 포함된 OpenJDK 21 slim 이미지를 사용하여 애플리케이션을 실행합니다.

@@ -34,9 +34,13 @@ public class User {
     @Enumerated(EnumType.STRING)
     private LoginType loginType; // LOCAL 또는 KAKAO
 
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(nullable = true)
     private Long kakaoId;
 
     @PrePersist
@@ -50,14 +54,13 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // 새로운 생성자 추가
-    public User(String username, String password, String email, UserRoleEnum role, Long kakaoId) {
+    public User(String username, String password, String email, UserRoleEnum role, LoginType loginType, Long kakaoId) {
         this.username = username;
         this.password = password;
         this.email = email;
         this.role = role;
-        this.loginType = LoginType.KAKAO;
-        // 다른 필요한 초기화 로직
+        this.loginType = loginType;
+        this.kakaoId = kakaoId;
     }
 
     // kakaoId 업데이트 메서드

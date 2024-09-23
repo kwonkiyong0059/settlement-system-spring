@@ -9,4 +9,5 @@ public class SimpleVideoResponseDto {
     private Long id;
     private String title;
     private String url;
+    private Integer duration;
 }

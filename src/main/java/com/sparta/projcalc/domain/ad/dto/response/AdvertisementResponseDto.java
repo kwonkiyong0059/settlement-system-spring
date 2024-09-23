@@ -13,6 +13,7 @@ public class AdvertisementResponseDto {
     private String content;
     private String imageUrl;
     private Long viewCount;
+    private Integer duration;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

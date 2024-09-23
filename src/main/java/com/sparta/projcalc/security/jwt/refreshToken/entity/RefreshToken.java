@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.Date;
+
 @Getter
 @Entity
 @NoArgsConstructor
@@ -20,9 +22,13 @@ public class RefreshToken {
     @JoinColumn(name = "user_id")
     private User user;
 
-    public RefreshToken(String refreshToken, User user) {
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date expiryDate;
+
+    public RefreshToken(String refreshToken, User user, Date expiryDate) {
         this.refreshToken = refreshToken;
         this.user = user;
+        this.expiryDate = expiryDate;
     }
 
     public Long getUserId() {

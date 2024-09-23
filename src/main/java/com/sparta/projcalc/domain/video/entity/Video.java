@@ -33,13 +33,21 @@ public class Video {
     private String url;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private VideoCategory category;
 
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 
     @Column(nullable = false)
-    private Long views;
+    private LocalDateTime updatedAt;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Long views = 0L;
+
+    @Column(nullable = false)
+    private Integer duration;
 
     @OneToMany(mappedBy = "video", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<PlayHistory> playHistories; // 비디오와 관련된 시청 기록
@@ -62,10 +70,11 @@ public class Video {
         this.views++;
     }
 
-    public void updateVideo(String title, String description, String url, VideoCategory category) {
+    public void updateVideo(String title, String description, String url, VideoCategory category, Integer duration) {
         this.title = title;
         this.description = description;
         this.url = url;
         this.category = category;
+        this.duration = duration;
     }
 }

@@ -14,6 +14,7 @@ public class VideoResponseDto {
     private String description;
     private String url;
     private VideoCategory category;
+    private Integer duration;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

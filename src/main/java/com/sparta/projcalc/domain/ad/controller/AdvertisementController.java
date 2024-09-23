@@ -38,6 +38,6 @@ public class AdvertisementController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteAdvertisement(@PathVariable Long id) {
         advertisementService.deleteAdvertisement(id);
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT); // 삭제 성공 시 204 No Content 상태 반환
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 }

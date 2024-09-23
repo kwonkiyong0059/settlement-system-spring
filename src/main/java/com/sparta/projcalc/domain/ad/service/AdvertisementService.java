@@ -22,6 +22,7 @@ public class AdvertisementService {
                 .title(createDto.getTitle())
                 .content(createDto.getContent())
                 .imageUrl(createDto.getImageUrl())
+                .duration(createDto.getDuration())
                 .viewCount(0L)
                 .build();
 
@@ -44,7 +45,7 @@ public class AdvertisementService {
                 .orElseThrow(() -> new AdvertisementNotFoundException("광고를 찾을 수 없습니다."));
 
         // updateDetails 메서드를 사용하여 광고 정보를 업데이트
-        advertisement.updateDetails(updateDto.getTitle(), updateDto.getContent(), updateDto.getImageUrl());
+        advertisement.updateDetails(updateDto.getTitle(), updateDto.getContent(), updateDto.getImageUrl(), updateDto.getDuration());
 
         advertisementRepository.save(advertisement);
 
@@ -80,7 +81,6 @@ public class AdvertisementService {
 
     @Transactional
     public void deleteAdvertisement(Long adId) {
-
         Advertisement advertisement = advertisementRepository.findById(adId)
                 .orElseThrow(() -> new AdvertisementNotFoundException("광고를 찾을 수 없습니다."));
 

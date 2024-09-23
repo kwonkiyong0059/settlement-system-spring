@@ -9,4 +9,5 @@ public class UpdateAdvertisementRequestDto {
     private String title;
     private String content;
     private String imageUrl;
+    private Integer duration;
 }
