@@ -102,7 +102,10 @@ public class JwtUtil {
                 .signWith(key, signatureAlgorithm)
                 .compact();
 
-        RefreshToken refreshToken = new RefreshToken(token, user);
+        // 토큰, 사용자 및 만료일을 사용하여 RefreshToken 생성
+        Date expiryDate = new Date(now.getTime() + REFRESH_TOKEN_TIME);
+        RefreshToken refreshToken = new RefreshToken(token, user, expiryDate);
+
         refreshTokenRepository.save(refreshToken);
 
         return token;

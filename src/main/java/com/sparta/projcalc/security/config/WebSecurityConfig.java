@@ -66,7 +66,6 @@ public class WebSecurityConfig {
                         .requestMatchers("/oauth2/**").permitAll()
                         .requestMatchers("/api/users/**").permitAll()
                         .requestMatchers("/auth/kakao/callback", "/login/kakao/**", "/oauth2/authorization/kakao/**").permitAll()
-                        .requestMatchers("/resources/**", "/static/**", "/public/**").permitAll() // 정적 자원 접근 허용
                         .anyRequest().authenticated()
         );
 
